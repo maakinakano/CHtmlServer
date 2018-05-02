@@ -6,8 +6,12 @@
 #include <unistd.h> //close()
 
 #define QUEUELIMIT 5
+#define URL_SIZE 2048
+
 void html(int fd, char *msg);
 void send_msg(int fd, char *msg);
+void parse_url(char *url, const char *request);
+
 
 const char header[] =   "HTTP/1.0 200 OK\r\n"
                         "Content-Length: %ld\r\n"
@@ -23,6 +27,8 @@ int main(int argc, char* argv[]) {
     unsigned short servPort; //server port number
     unsigned int clitLen; // client internet socket address length
     char buf[2048];
+    char inbuf[2048];
+    char url[URL_SIZE];
 
     if ( argc != 2) {
         fprintf(stderr, "port number 8080.\n");
@@ -58,13 +64,34 @@ int main(int argc, char* argv[]) {
             perror("accept() failed.");
             exit(EXIT_FAILURE);
         }
-        html(clitSock, "HELLO\r\n");
+        memset(inbuf, 0, sizeof(inbuf));
+        recv(clitSock, inbuf, sizeof(inbuf), 0);
+        // 本来ならばクライアントからの要求内容をパースすべきです
+        parse_url(url, inbuf);
+        html(clitSock, url);
         close(clitSock);
     }
 
     return EXIT_SUCCESS;
 }
 
+void parse_url(char *url, const char *request) {
+    int i;
+    char *start = strstr(request, "GET /")+5;
+    char *end = strstr(request, " HTTP/");
+    char temp[URL_SIZE];
+    for(i=0; start+i!=end; i++) {
+        temp[i] = start[i];
+    }
+    temp[i] = '\0';
+    //お気に入り画像(favicon.ico)のリクエストは無視
+    if(strcmp(temp, "favicon.ico") == 0) {return;}
+    if(strcmp(temp+i-5, ".html") != 0 && strcmp(temp+i-4, ".hml") != 0){return;}
+    for(i=0; temp[i]!='\0'; i++) {
+        url[i] = temp[i];
+    }
+    url[i] = '\0';
+}
 
 void html(int fd, char *msg) {
     //headerの作成
