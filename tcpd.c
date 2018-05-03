@@ -9,7 +9,11 @@
 #define URL_SIZE 256
 #define LINE_SIZE 2048
 #define DOCUMENT_ROOT "C:\\Users\\waon\\Desktop\\workspace\\cockrobin\\http\\root\\"
-#define PAGE404 "C:\\Users\\waon\\Desktop\\workspace\\cockrobin\\http\\root\\404Page.html"
+
+typedef struct extension {
+    char* name;
+    char* headerType;
+} Extension;
 
 void html(int fd, char *msg);
 void send_msg(int fd, const char *msg);
@@ -17,11 +21,18 @@ void send_file(int fd, FILE *fp);
 FILE* open_file(char *url);
 void parse_url(char *url, const char *request);
 
+const Extension support_exte[] = {
+    {"others", "text/plain"},
+    {".html", "text/html"},
+    {".hml", "text/html"},
+    {".css", "text/css"},
+    {".jpg", "image/jpeg"}
+};
 
-const char header[] =   "HTTP/1.0 200 OK\r\n"
-                        "Content-Type: text/html\r\n"
-                        "Transfer-Encoding: chunked\r\n"
-                        "\r\n";
+const char header_template[] =  "HTTP/1.0 200 OK\r\n"
+                                "Content-Type: %s\r\n"
+                                "Transfer-Encoding: chunked\r\n"
+                                "\r\n";
 
 const char header404[] = "HTTP/1.0 404 Not Found\r\n"
                          "Status: 404\r\n"
@@ -39,7 +50,7 @@ int main(int argc, char* argv[]) {
     unsigned short servPort; //server port number
     unsigned int clitLen; // client internet socket address length
     char buf[2048];
-    char inbuf[2048];
+    char request[2048];
     char url[URL_SIZE];
 
     if ( argc != 2) {
@@ -76,10 +87,10 @@ int main(int argc, char* argv[]) {
             perror("accept() failed.");
             exit(EXIT_FAILURE);
         }
-        memset(inbuf, 0, sizeof(inbuf));
+        memset(request, 0, sizeof(request));
         memset(url, 0, sizeof(url));
-        recv(clitSock, inbuf, sizeof(inbuf), 0);
-        parse_url(url, inbuf);
+        recv(clitSock, request, sizeof(request), 0);
+        parse_url(url, request);
         html(clitSock, url);
         close(clitSock);
     }
@@ -89,37 +100,42 @@ int main(int argc, char* argv[]) {
 
 void parse_url(char *url, const char *request) {
     int i;
-//    fprintf(stderr, "%c%c%c%c\n", request[0], request[1], request[2], request[3]);
-//    fprintf(stderr, "%s\n\n", request);
     char *start = strstr(request, "GET /");
     char *end = strstr(request, " HTTP/");
-    char temp[URL_SIZE];
     if(start == NULL || end == NULL) {
         return;
     }
     start+=5;
     for(i=0; start+i!=end; i++) {
-        temp[i] = start[i];
+        url[i] = start[i];
     }
-    temp[i] = '\0';
-    //お気に入り画像(favicon.ico)のリクエストは無視
-    if(strcmp(temp, "favicon.ico") == 0) {
-    } else if((i > 5) && (strcmp(temp+i-5, ".html") == 0)){
-        snprintf(url, URL_SIZE, "%s%s", DOCUMENT_ROOT, temp);
-    } else if((i > 4) && (strcmp(temp+i-4, ".hml") == 0)){
-        snprintf(url, URL_SIZE, "%s%s", DOCUMENT_ROOT, temp);        
+    url[i] = '\0';
+}
+
+int detect_extension(const char *url) {
+    int i, len = strlen(url);
+    int num = sizeof(support_exte)/sizeof(Extension);
+    for(i=1; i<num; i++) {
+        const Extension* exte = support_exte+i;
+        int exte_len = strlen(exte->name);
+        if(len <= exte_len){continue;}
+        if(strcmp(url+len-exte_len, exte->name) == 0){
+            return i;
+        }
     }
-    fprintf(stderr, "%s\n", url);
+    //supportされていないなら0を返す
+    return 0;
 }
 
 void html(int fd, char *url) {
     FILE *fp = NULL;
-    //htmlでもhmlでもない
-    if(strcmp(url, "") == 0) {
-        send_msg(fd, header);
-        return;
-    }
-    fp = open_file(url);
+    int exte_num = detect_extension(url);
+    char header[LINE_SIZE];
+    char request_file[URL_SIZE];
+    snprintf(header, LINE_SIZE, header_template, support_exte[exte_num].headerType);
+    snprintf(request_file, URL_SIZE, "%s%s", DOCUMENT_ROOT, url);
+    printf("%s\n", request_file);
+    fp = open_file(request_file);
     if(fp == NULL) {
         //404
         send_msg(fd, header404);

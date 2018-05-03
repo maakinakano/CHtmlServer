@@ -1,0 +1,11 @@
+body {
+    background-color: plum;
+}
+div#main{
+    margin-left: auto;
+    margin-right: auto;
+    width: 300px;
+}
+#main h1 {
+   text-align: center;
+}
