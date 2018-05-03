@@ -23,7 +23,7 @@ void parse_url(char *url, const char *request);
 
 const Extension support_exte[] = {
     {"others", "text/plain"},
-    {".html", "text/html"},
+    {".html", "text/html; charset=UTF-8"},
     {".hml", "text/html"},
     {".css", "text/css"},
     {".jpg", "image/jpeg"},
