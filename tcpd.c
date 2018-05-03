@@ -8,18 +8,18 @@
 #define QUEUELIMIT 5
 #define URL_SIZE 256
 #define LINE_SIZE 2048
-#define DOCUMENT_ROOT "C:\\Users\\waon\\Desktop\\workspace\\cockrobin\\http\\root\\"
 
 typedef struct extension {
     char* name;
     char* headerType;
 } Extension;
 
-void html(int fd, char *msg);
+void html(int fd, char *url, const char *document_root);
 void send_msg(int fd, const char *msg);
 void send_file(int fd, FILE *fp);
 FILE* open_file(char *url);
 void parse_url(char *url, const char *request);
+int detect_extension(const char *url);
 
 const Extension support_exte[] = {
     {"others", "text/plain"},
@@ -48,19 +48,31 @@ int main(int argc, char* argv[]) {
     int clitSock; //client socket descripter
     struct sockaddr_in servSockAddr; //server internet socket address
     struct sockaddr_in clitSockAddr; //client internet socket address
-    unsigned short servPort; //server port number
+    unsigned short servPort = 8080; //server port number
     unsigned int clitLen; // client internet socket address length
     char buf[2048];
     char request[2048];
     char url[URL_SIZE];
+    char *document_root = "C:\\Users\\waon\\Desktop\\workspace\\cockrobin\\http\\root\\";
+    int opt;
 
-    if ( argc != 2) {
-        fprintf(stderr, "port number 8080.\n");
-        servPort = 8080;
-    } else if ((servPort = (unsigned short) atoi(argv[1])) == 0) {
-        fprintf(stderr, "invalid port number.\n");
-        exit(EXIT_FAILURE);
+    opterr = 0;
+    while((opt = getopt(argc, argv, "p:d:")) != -1) {
+        switch((char)opt) {
+        case 'p':
+            servPort = strtol(optarg, NULL, 10);
+            break;
+        case 'd':
+            document_root = optarg;
+            break;
+        default:
+            printf("Usage: %s [-p port_number] [-d document_root]\n", argv[0]);
+            exit(EXIT_FAILURE);
+            break;
+        }
     }
+    printf("port number %d.\n", servPort);
+    printf("dcument root %s\n", document_root);
 
     if ((servSock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0 ){
         perror("socket() failed.");
@@ -92,7 +104,7 @@ int main(int argc, char* argv[]) {
         memset(url, 0, sizeof(url));
         recv(clitSock, request, sizeof(request), 0);
         parse_url(url, request);
-        html(clitSock, url);
+        html(clitSock, url, document_root);
         close(clitSock);
     }
 
@@ -128,13 +140,13 @@ int detect_extension(const char *url) {
     return 0;
 }
 
-void html(int fd, char *url) {
+void html(int fd, char *url, const char *document_root) {
     FILE *fp = NULL;
     int exte_num = detect_extension(url);
     char header[LINE_SIZE];
     char request_file[URL_SIZE];
     snprintf(header, LINE_SIZE, header_template, support_exte[exte_num].headerType);
-    snprintf(request_file, URL_SIZE, "%s%s", DOCUMENT_ROOT, url);
+    snprintf(request_file, URL_SIZE, "%s%s", document_root, url);
     printf("%s\n", request_file);
     fp = open_file(request_file);
     if(fp == NULL) {
