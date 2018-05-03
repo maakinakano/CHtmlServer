@@ -28,6 +28,7 @@ const Extension support_exte[] = {
     {".css", "text/css"},
     {".jpg", "image/jpeg"},
     {".png", "image/png"},
+    {".js", "application/javascript"},
 };
 
 const char header_template[] =  "HTTP/1.0 200 OK\r\n"
