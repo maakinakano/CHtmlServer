@@ -7,15 +7,19 @@
 
 #define QUEUELIMIT 5
 #define URL_SIZE 2048
+#define LINE_SIZE 2048
+#define DOCUMENT_ROOT "C:\\Users\\waon\\Desktop\\workspace\\cockrobin\\http\\"
 
 void html(int fd, char *msg);
-void send_msg(int fd, char *msg);
+void send_msg(int fd, const char *msg);
+void send_file(int fd, FILE *fp);
+FILE* open_file(char *url);
 void parse_url(char *url, const char *request);
 
 
 const char header[] =   "HTTP/1.0 200 OK\r\n"
-                        "Content-Length: %ld\r\n"
                         "Content-Type: text/html\r\n"
+                        "Transfer-Encoding: chunked\r\n"
                         "\r\n";
 
 int main(int argc, char* argv[]) {
@@ -87,21 +91,39 @@ void parse_url(char *url, const char *request) {
     //お気に入り画像(favicon.ico)のリクエストは無視
     if(strcmp(temp, "favicon.ico") == 0) {return;}
     if(strcmp(temp+i-5, ".html") != 0 && strcmp(temp+i-4, ".hml") != 0){return;}
-    for(i=0; temp[i]!='\0'; i++) {
-        url[i] = temp[i];
+    snprintf(url, URL_SIZE, "%s%s", DOCUMENT_ROOT, temp);
+}
+
+void html(int fd, char *url) {
+    FILE *fp;
+    fp = open_file(url);
+    if((fp == NULL)) {
+        //404
+        printf("wakannnyai\n");
+    } else {
+        //200 OK
+        send_msg(fd, header);
+        send_file(fd, fp);
     }
-    url[i] = '\0';
 }
 
-void html(int fd, char *msg) {
-    //headerの作成
-    char temp[2000];
-    sprintf(temp, header, strlen(msg));
+FILE* open_file(char* url) {
+    FILE *fp;
+    fp = fopen(url, "r");
+    return fp;
+}
+
+void send_file(int fd, FILE *fp) {
+    char line[LINE_SIZE];
+    char temp[LINE_SIZE];
+    fgets(line, LINE_SIZE, fp);
+    snprintf(temp, LINE_SIZE, "%s\r\n", line);
     send_msg(fd, temp);
-    send_msg(fd, msg);
+    send_msg(fd, "\r\n");
+    fclose(fp);
 }
 
-void send_msg(int fd, char *msg) {
+void send_msg(int fd, const char *msg) {
     int len = strlen(msg);
     // 指定されたメッセージ`msg`をソケットに送信
    if (write(fd, msg, len) != len) {
