@@ -6,9 +6,9 @@
 #include <unistd.h> //close()
 
 #define QUEUELIMIT 5
-#define URL_SIZE 2048
+#define URL_SIZE 256
 #define LINE_SIZE 2048
-#define DOCUMENT_ROOT "C:\\Users\\waon\\Desktop\\workspace\\cockrobin\\http\\"
+#define DOCUMENT_ROOT "C:\\Users\\waon\\Desktop\\workspace\\cockrobin\\http\\root\\"
 
 void html(int fd, char *msg);
 void send_msg(int fd, const char *msg);
@@ -69,8 +69,8 @@ int main(int argc, char* argv[]) {
             exit(EXIT_FAILURE);
         }
         memset(inbuf, 0, sizeof(inbuf));
+        memset(url, 0, sizeof(url));
         recv(clitSock, inbuf, sizeof(inbuf), 0);
-        // 本来ならばクライアントからの要求内容をパースすべきです
         parse_url(url, inbuf);
         html(clitSock, url);
         close(clitSock);
@@ -81,25 +81,40 @@ int main(int argc, char* argv[]) {
 
 void parse_url(char *url, const char *request) {
     int i;
-    char *start = strstr(request, "GET /")+5;
+//    fprintf(stderr, "%c%c%c%c\n", request[0], request[1], request[2], request[3]);
+//    fprintf(stderr, "%s\n\n", request);
+    char *start = strstr(request, "GET /");
     char *end = strstr(request, " HTTP/");
     char temp[URL_SIZE];
+    if(start == NULL || end == NULL) {
+        return;
+    }
+    start+=5;
     for(i=0; start+i!=end; i++) {
         temp[i] = start[i];
     }
     temp[i] = '\0';
     //お気に入り画像(favicon.ico)のリクエストは無視
-    if(strcmp(temp, "favicon.ico") == 0) {return;}
-    if(strcmp(temp+i-5, ".html") != 0 && strcmp(temp+i-4, ".hml") != 0){return;}
-    snprintf(url, URL_SIZE, "%s%s", DOCUMENT_ROOT, temp);
+    if(strcmp(temp, "favicon.ico") == 0) {
+    } else if((i > 5) && (strcmp(temp+i-5, ".html") == 0)){
+        snprintf(url, URL_SIZE, "%s%s", DOCUMENT_ROOT, temp);
+    } else if((i > 4) && (strcmp(temp+i-4, ".hml") == 0)){
+        snprintf(url, URL_SIZE, "%s%s", DOCUMENT_ROOT, temp);        
+    }
+    fprintf(stderr, "%s\n", url);
 }
 
 void html(int fd, char *url) {
-    FILE *fp;
+    FILE *fp = NULL;
+    //htmlでもhmlでもない
+    if(strcmp(url, "") == 0) {
+        send_msg(fd, header);
+        return;
+    }
     fp = open_file(url);
-    if((fp == NULL)) {
+    if(fp == NULL) {
         //404
-        printf("wakannnyai\n");
+        send_msg(fd, "HTTP/1.0 404 Not Found\r\n");
     } else {
         //200 OK
         send_msg(fd, header);
@@ -108,18 +123,16 @@ void html(int fd, char *url) {
 }
 
 FILE* open_file(char* url) {
-    FILE *fp;
+    FILE *fp=NULL;
     fp = fopen(url, "r");
     return fp;
 }
 
 void send_file(int fd, FILE *fp) {
     char line[LINE_SIZE];
-    char temp[LINE_SIZE];
-    fgets(line, LINE_SIZE, fp);
-    snprintf(temp, LINE_SIZE, "%s\r\n", line);
-    send_msg(fd, temp);
-    send_msg(fd, "\r\n");
+    while(fgets(line, LINE_SIZE, fp) != NULL){
+        send_msg(fd, line);
+    }
     fclose(fp);
 }
 
