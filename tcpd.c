@@ -9,6 +9,7 @@
 #define URL_SIZE 256
 #define LINE_SIZE 2048
 #define DOCUMENT_ROOT "C:\\Users\\waon\\Desktop\\workspace\\cockrobin\\http\\root\\"
+#define PAGE404 "C:\\Users\\waon\\Desktop\\workspace\\cockrobin\\http\\root\\404Page.html"
 
 void html(int fd, char *msg);
 void send_msg(int fd, const char *msg);
@@ -21,6 +22,13 @@ const char header[] =   "HTTP/1.0 200 OK\r\n"
                         "Content-Type: text/html\r\n"
                         "Transfer-Encoding: chunked\r\n"
                         "\r\n";
+
+const char header404[] = "HTTP/1.0 404 Not Found\r\n"
+                         "Status: 404\r\n"
+                         "Content-Type: text/html\r\n"
+                         "Transfer-Encoding: chunked\r\n"
+                         "\r\n"
+                         "<h1>404 Nothing There!</h1>";
 
 int main(int argc, char* argv[]) {
 
@@ -114,7 +122,7 @@ void html(int fd, char *url) {
     fp = open_file(url);
     if(fp == NULL) {
         //404
-        send_msg(fd, "HTTP/1.0 404 Not Found\r\n");
+        send_msg(fd, header404);
     } else {
         //200 OK
         send_msg(fd, header);
