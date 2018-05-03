@@ -26,7 +26,8 @@ const Extension support_exte[] = {
     {".html", "text/html"},
     {".hml", "text/html"},
     {".css", "text/css"},
-    {".jpg", "image/jpeg"}
+    {".jpg", "image/jpeg"},
+    {".png", "image/png"},
 };
 
 const char header_template[] =  "HTTP/1.0 200 OK\r\n"
@@ -148,14 +149,15 @@ void html(int fd, char *url) {
 
 FILE* open_file(char* url) {
     FILE *fp=NULL;
-    fp = fopen(url, "r");
+    fp = fopen(url, "rb");
     return fp;
 }
 
 void send_file(int fd, FILE *fp) {
-    char line[LINE_SIZE];
-    while(fgets(line, LINE_SIZE, fp) != NULL){
-        send_msg(fd, line);
+    unsigned char line[LINE_SIZE];
+    int size;
+    while(size = fread(line, sizeof(unsigned char), LINE_SIZE, fp)) {
+        write(fd, line, size);
     }
     fclose(fp);
 }

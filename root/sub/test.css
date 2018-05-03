@@ -1,0 +1,11 @@
+body {
+    background-color: lightcyan;
+}
+div#main{
+    margin-left: auto;
+    margin-right: auto;
+    width: 350px;
+}
+#main h1 {
+   text-align: center;
+}
